@@ -1,0 +1,11 @@
+Product Type,SKU,Price,Availability,Number of products sold,Revenue generated,Customer demographics,Stock levels,Lead times,Order quantities,Shipping times,Shipping carriers,Shipping costs,Supplier name,Location,Lead time,Production volumes,Manufacturing lead time,Manufacturing costs,Inspection results,Defect rates,Transportation modes,Routes,Costs
+Electronics,SKU-T01,29.99,150,1200,35980.50,Male,80,14,200,5,FedEx,12.75,Acme Supplies,Chicago,10,500,7,1450.00,Pass,2.5,Road,Route-A,3200.00
+Clothing,SKU-T02,49.50,200,3400,168300.00,Female,120,21,400,3,UPS,8.20,Textile Partners,Dallas,14,900,10,2600.00,Pass,1.2,Air,Route-B,5100.00
+Furniture,,199.00,45,320,63680.00,,30,30,80,8,DHL,25.00,WoodWorks,Seattle,25,150,21,8900.00,Fail,4.8,Sea,Route-C,12000.00
+Grocery,SKU-T04,3.75,980,15400,57750.00,Other,500,3,2000,1,USPS,2.10,Fresh Foods,Miami,2,4000,2,950.00,Pass,0.4,Road,Route-D,1800.00
+Electronics,,899.99,12,210,188997.90,Male,25,45,30,10,FedEx,40.00,Acme Supplies,Chicago,35,60,30,24000.00,Pass,0.9,Air,Route-E,28500.00
+Clothing,SKU-T06,19.99,500,8000,159920.00,Female,300,7,1000,2,UPS,4.50,Textile Partners,Dallas,5,2000,4,1100.00,Pass,1.1,Air,Route-B,2400.00
+Furniture,,75.25,60,450,33862.50,,45,18,120,6,DHL,15.75,WoodWorks,Seattle,16,300,12,3300.00,Pass,3.3,Sea,Route-C,4700.00
+Grocery,SKU-T08,1.99,1500,22000,43780.00,Other,800,2,3000,1,USPS,1.10,Fresh Foods,Miami,1,6000,1,700.00,Pass,0.2,Road,Route-D,1300.00
+Electronics,,549.00,30,500,274500.00,Male,60,20,75,9,FedEx,22.40,Acme Supplies,Chicago,18,120,14,9800.00,Pass,1.5,Air,Route-E,11200.00
+Clothing,SKU-T10,34.95,320,5100,178245.00,Female,210,12,650,4,UPS,6.80,Textile Partners,Dallas,9,1500,7,1900.00,Pass,0.7,Air,Route-B,3800.00

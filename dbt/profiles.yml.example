@@ -1,0 +1,31 @@
+# Copy to ~/.dbt/profiles.yml and fill in the values, or set the DBT_* variables
+# referenced below.
+#
+# Never commit a filled-in copy of this file. It contains warehouse credentials.
+
+supply_chain:
+  target: dev
+
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'localhost') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DBT_USER') }}"
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_DATABASE', 'supply_chain') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'silver') }}"
+      threads: 4
+      connect_timeout: 10
+
+    prod:
+      type: postgres
+      host: "{{ env_var('DBT_HOST') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DBT_USER') }}"
+      password: "{{ env_var('DBT_PASSWORD') }}"
+      dbname: "{{ env_var('DBT_DATABASE') }}"
+      schema: prod
+      threads: 8
+      connect_timeout: 10
+

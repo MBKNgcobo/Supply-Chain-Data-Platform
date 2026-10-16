@@ -1,0 +1,102 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: scp-postgres
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-supply_chain}
+      AIRFLOW_DB: ${AIRFLOW_DB:-airflow_db}
+    ports:
+      - "${HOST_POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./sql/bootstrap:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-supply_chain}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
+    restart: unless-stopped
+  airflow:
+    build: .
+    container_name: scp-airflow
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      AIRFLOW__CORE__EXECUTOR: LocalExecutor
+      AIRFLOW__CORE__LOAD_EXAMPLES: "False"
+      AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${AIRFLOW_DB:-airflow_db}
+      AIRFLOW__CORE__DAGS_FOLDER: /opt/project/dags
+      SUPPLY_CHAIN_REPO_ROOT: /opt/project
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-supply_chain}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DBT_HOST: postgres
+      DBT_PORT: "5432"
+      DBT_DATABASE: ${POSTGRES_DB:-supply_chain}
+      DBT_SCHEMA: ${DBT_SCHEMA:-silver}
+      DBT_USER: ${POSTGRES_USER:-postgres}
+      DBT_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DBT_PROFILES_DIR: /opt/project/dbt
+    ports:
+      - "${AIRFLOW_PORT:-8080}:8080"
+    volumes:
+      - ./dags:/opt/project/dags:ro
+      - ./dbt:/opt/project/dbt
+      - ./data:/opt/project/data
+      - ./src:/opt/project/src:ro
+      - ./sql:/opt/project/sql:ro
+    command: standalone
+    restart: unless-stopped
+  pipeline:
+    build: .
+    container_name: scp-pipeline
+    profiles: ["pipeline"]
+    env_file:
+      - path: .env
+        required: false
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DB_HOST: postgres
+      DB_PORT: "5432"
+      DB_NAME: ${POSTGRES_DB:-supply_chain}
+      DB_USER: ${POSTGRES_USER:-postgres}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DBT_HOST: postgres
+      DBT_PORT: "5432"
+      DBT_DATABASE: ${POSTGRES_DB:-supply_chain}
+      DBT_SCHEMA: ${DBT_SCHEMA:-silver}
+      DBT_USER: ${POSTGRES_USER:-postgres}
+      DBT_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      DBT_PROFILES_DIR: /opt/project/dbt
+      SUPPLY_CHAIN_REPO_ROOT: /opt/project
+    volumes:
+      - ./dbt:/opt/project/dbt
+      - ./data:/opt/project/data
+      - ./src:/opt/project/src:ro
+      - ./sql:/opt/project/sql:ro
+      - ./tests:/opt/project/tests:ro
+    working_dir: /opt/project
+    # One-shot batch run: CLI exit code propagates so `docker compose --profile
+    # pipeline run --rm pipeline` exits non-zero on ETL failure. dbt runs only
+    # after a successful ingest, mirroring the DAG order.
+    command: >
+      sh -c "python -m supply_chain_pipeline.cli --file /opt/project/data/supply_chain_data.csv
+      && dbt build --profiles-dir /opt/project/dbt --project-dir /opt/project/dbt
+      && dbt test --profiles-dir /opt/project/dbt --project-dir /opt/project/dbt"
+volumes:
+  pgdata:
+

@@ -1,0 +1,127 @@
+# CI: validate code changes on push and pull requests.
+#
+# Scope is deliberately validation-only: this workflow proves a change is safe
+# to merge. It does NOT run a production pipeline on a schedule -- local
+# scheduling stays with Airflow (dags/) and one-shot runs with
+# `docker compose --profile pipeline run --rm pipeline`.
+#
+# Quality gates (a change is not complete while any of these fail):
+#   1. ruff format --check + ruff check          (formatting and lint)
+#   2. pytest (unit)                             (no database required)
+#   3. scripts/check_schema_compatibility.py     (loader columns vs bronze DDL)
+#   4. scripts/check_contract_parity.py          (docs describe implemented behaviour)
+#   5. pytest -m integration (Postgres 16)       (real pipeline, test database)
+#   6. CLI ingest of a fixture + dbt build/test  (bronze -> silver -> gold)
+#
+# Each gate is its own step so GitHub reports exactly which one failed.
+
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.11"
+  POSTGRES_VERSION: "16"
+  # Service-host connection (GitHub service containers are reachable on localhost).
+  DB_HOST: localhost
+  DB_PORT: 5432
+  DB_NAME: supply_chain_test
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  DBT_HOST: localhost
+  DBT_PORT: 5432
+  DBT_DATABASE: supply_chain_test
+  DBT_SCHEMA: silver
+  DBT_USER: postgres
+  DBT_PASSWORD: postgres
+  DBT_PROFILES_DIR: ${{ github.workspace }}/dbt
+
+jobs:
+  validate:
+    name: validate (lint, unit, db, dbt)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: supply_chain_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d supply_chain_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+          cache-dependency-path: requirements-dev.txt
+
+      - name: Install pinned dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Formatting check (ruff format)
+        run: ruff format --check src tests scripts
+
+      - name: Lint (ruff check)
+        run: ruff check src tests scripts
+
+      - name: Unit tests (no database)
+        run: python -m pytest -q
+
+      - name: Schema compatibility (loader vs bronze DDL)
+        run: python scripts/check_schema_compatibility.py
+
+      - name: Contract parity (docs vs implemented behaviour)
+        run: python scripts/check_contract_parity.py
+
+      - name: Bootstrap test database
+        run: |
+          for script in 001_create_schemas.sql 002_create_audit_tables.sql 003_create_bronze_supply_chain_raw.sql; do
+            echo "--- applying sql/bootstrap/$script ---"
+            PGPASSWORD="$DB_PASSWORD" psql -h "$DB_HOST" -p "$DB_PORT" -U "$DB_USER" -d "$DB_NAME" -v ON_ERROR_STOP=1 -f "sql/bootstrap/$script"
+          done
+
+      - name: Integration tests (Postgres service)
+        run: python -m pytest -m integration -q -p no:cacheprovider --no-cov
+
+      - name: Ingest fixture CSV through the real CLI
+        run: |
+          python -m supply_chain_pipeline.cli \
+            --file tests/fixtures/happy_path.csv \
+            --pipeline-name ci_smoke_ingestion
+          echo "CLI exit code: $?"
+
+      - name: dbt build (models + tests gate gold)
+        working-directory: dbt
+        run: dbt build --profiles-dir "$DBT_PROFILES_DIR" --project-dir "$DBT_PROFILES_DIR"
+
+      - name: dbt test (required model tests)
+        working-directory: dbt
+        run: dbt test --profiles-dir "$DBT_PROFILES_DIR" --project-dir "$DBT_PROFILES_DIR"
+
+      - name: Report failure context
+        if: failure()
+        run: |
+          echo "::error::CI failed. Open the failed step above -- each quality gate is a separate step so the failure is named, not buried in a log."
+          echo "Gates, in order: format -> lint -> unit -> schema-compat -> contract-parity -> bootstrap -> integration -> CLI ingest -> dbt build -> dbt test."

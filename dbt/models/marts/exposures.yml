@@ -1,0 +1,38 @@
+# Declared consumers of the gold SKU performance fact (closes ADR-002 risk R5).
+#
+# Until this file existed, lineage stopped at gold: the dataset contract named
+# two consumers, but dbt could not see them, so `dbt build` impact analysis and
+# `dbt docs` could not show that changing fct_sku_performance breaks a report
+# or an analyst.
+#
+# owner.name is UNASSIGNED because the dataset contract's owner field is
+# unassigned (SPEC-001 Q1, blocking). Replace both when an owner is named —
+# an exposure with no owner is the same defect as a contract with no owner,
+# only quieter.
+
+exposures:
+  - name: powerbi_operational_reporting
+    label: Power BI Operational Reporting
+    type: dashboard
+    maturity: low
+    description: >-
+      Operational Power BI report over gold.fct_sku_performance, as named in
+      the dataset contract's allowed_consumers. Consumes the published fact
+      only; the publish gate is still closed (see the contract's publish_gate).
+    owner:
+      name: UNASSIGNED
+    depends_on:
+      - ref('fct_sku_performance')
+
+  - name: procurement_analysts
+    label: Procurement Analysts
+    type: analysis
+    maturity: low
+    description: >-
+      Procurement analysts querying gold.fct_sku_performance directly, as named
+      in the dataset contract's allowed_consumers. The publish gate is still
+      closed (see the contract's publish_gate).
+    owner:
+      name: UNASSIGNED
+    depends_on:
+      - ref('fct_sku_performance')

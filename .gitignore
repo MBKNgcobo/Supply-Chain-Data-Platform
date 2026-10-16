@@ -1,0 +1,27 @@
+# pytest-cov data file (docs/testing/unit-test-plan.md)
+.coverage
+# local env overrides -- never commit real secrets
+.env
+# python
+__pycache__/
+*.pyc
+.pytest_cache/
+# dbt build artefacts
+dbt/target/
+dbt/dbt_packages/
+dbt/logs/
+dbt/.user.yml
+# airflow / compose runtime
+logs/
+airflow-venv/
+# local run evidence -- reproduced by CI, not stored in git
+integration_run*.log
+*.session.sql
+# raw data drops (schema-incompatible with the documented contract)
+Supply_chain_data.zip
+# vendored skills pack: carries its own nested .git, IDE dirs, and large docs.
+/data-engineering-agent-skills/
+# editor state
+.vscode/
+
+

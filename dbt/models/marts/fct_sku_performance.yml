@@ -1,0 +1,150 @@
+version: 2
+
+models:
+  - name: fct_sku_performance
+    description: >-
+      Current-state performance measures per SKU from the most recent successful
+      load of supply_chain_data.csv — a snapshot of a static source file, not a
+      live feed. Grain: one row per sku (SPEC-001 Q4). Denormalized shape per
+      docs/contracts/datasets/gold-fct_sku_performance.contract.yaml, which is
+      the approval record for this schema (ADR-003). No customer_demographics
+      (Q6 answered: gender data, excluded from every published model). PUBLISH
+      GATE BLOCKED: owner unassigned, SPEC-001 draft, profiling not done — this
+      model is code-complete, not publishable.
+
+    config:
+      tags: ["marts", "gold"]
+
+    columns:
+      - name: sku
+        description: >-
+          Business key, one row per sku (SPEC-001 Q4). Must exist in
+          dim_product — enforced by test so a fact row can never reference an
+          absent dimension.
+        data_type: text
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('dim_product')
+                field: sku
+
+      - name: product_type
+        description: Product category as delivered by the source. No category mapping applied.
+        data_type: text
+
+      - name: supplier_name
+        description: Supplier as delivered. Normalised downstream if a consumer ever needs it.
+        data_type: text
+
+      - name: shipping_carriers
+        description: Carrier name as delivered.
+        data_type: text
+
+      - name: transportation_modes
+        description: Transport mode as delivered.
+        data_type: text
+
+      - name: location
+        description: Source location string. Meaning unverified.
+        data_type: text
+
+      - name: routes
+        description: Route identifier as delivered.
+        data_type: text
+
+      - name: price
+        description: Unit price. NUMERIC(12,2) per docs/data-dictionary.md.
+        data_type: numeric
+
+      - name: revenue_generated
+        description: >-
+          Revenue. Gross versus net is UNDEFINED (SPEC-001 §12) — do not label
+          this in a report until that is decided.
+        data_type: numeric
+
+      - name: costs
+        description: >-
+          Cost. Whether this includes shipping is UNDEFINED (SPEC-001 §12).
+          Passed through unmodified so the definition is decided once.
+        data_type: numeric
+
+      - name: shipping_costs
+        description: Shipping cost.
+        data_type: numeric
+
+      - name: manufacturing_costs
+        description: Manufacturing cost.
+        data_type: numeric
+
+      - name: number_of_products_sold
+        description: Units sold. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: order_quantities
+        description: Ordered quantity. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: stock_levels
+        description: Stock on hand. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: production_volumes
+        description: Production volume. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: defect_rates
+        description: >-
+          Defect rate. Range UNVERIFIED — 0-100 or 0-1 (SPEC-001 Q7). The
+          contract's accepted_range check is asserted in
+          dbt/tests/assert_defect_rates_within_accepted_range.sql at severity
+          warn, using the superset 0-100 bounds so neither candidate encoding
+          is assumed.
+        data_type: numeric
+
+      - name: lead_times_1
+        description: >-
+          From the first colliding source header, 'Lead times'. NOT the same
+          measure as lead_times_2 until SPEC-001 Q3 is resolved. Do not sum or
+          coalesce.
+        data_type: integer
+
+      - name: lead_times_2
+        description: >-
+          From the second colliding source header, 'Lead time'. See
+          lead_times_1 — do not sum or coalesce.
+        data_type: integer
+
+      - name: manufacturing_lead_time
+        description: Manufacturing lead time. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: shipping_times
+        description: Shipping duration. Unit (days/hours) unverified.
+        data_type: integer
+
+      - name: availability
+        description: >-
+          Availability, INTEGER per SPEC-001 Q7 (docs/data-dictionary.md).
+          DType settled, semantics NOT: count of available units versus 0/1
+          flag is unconfirmed, so no boolean predicate or aggregate may be
+          built on it until that is decided.
+        data_type: integer
+
+      - name: inspection_results
+        description: >-
+          Stays text (Q7 typed it VARCHAR(20)). Its pass/fail-versus-numeric-
+          score meaning is still unconfirmed.
+        data_type: text
+
+      - name: source_batch_id
+        description: >-
+          Provenance. SHA-256 of the source file that produced this row — the
+          only provenance column the contract carries. Not null by
+          construction; also the grouping key of the reconciliation test.
+        data_type: text
+        tests:
+          - not_null

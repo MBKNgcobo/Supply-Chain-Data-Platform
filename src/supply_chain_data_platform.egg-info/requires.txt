@@ -1,0 +1,6 @@
+pydantic>=2
+psycopg2-binary
+
+[dev]
+pytest>=8
+pytest-cov>=5

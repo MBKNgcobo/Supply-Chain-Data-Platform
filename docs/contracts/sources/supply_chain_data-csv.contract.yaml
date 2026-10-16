@@ -1,0 +1,219 @@
+# Source contract for the Supply Chain Data Platform.
+# Status: DRAFT — column list taken from docs/source-data-contract.md, which
+# records no data types, no row count, and no quality rules. Every `type` below
+# is therefore `string` (unprofiled) and every `required` flag is provisional.
+# Regenerate this file from a profiling run against a real supply_chain_data.csv
+# before using it as a gate. See SPEC-001 §11 Q2/Q3/Q4/Q7.
+
+source_contract:
+  name: supply_chain_data_csv
+  spec_ref: SPEC-001
+  owner: UNASSIGNED                       # BLOCKING — see Q1
+  system_of_record: kaggle:harshsingh2209/supply-chain-analysis
+  extraction_method: manual_file_drop
+  landing_path: data/incoming/
+  expected_filename: supply_chain_data.csv
+  file_format: csv
+  encoding_expected: utf-8-sig
+  encodings_tolerated: [utf-8-sig, utf-8, latin-1, cp1252]
+  cadence: manual                         # no published upstream schedule
+  schema:
+    version: unprofiled-v0
+    profiling_done: false
+    primary_key_candidate: [sku]          # uniqueness UNVERIFIED — see Q4
+    duplicate_header_hazard: true         # 'Lead times' and 'Lead time' both present — see Q3
+    has_temporal_column: false            # no date/timestamp in source — see Q5
+    columns:
+      - name: product_type
+        source_header: "Product Type"
+        type: string
+        required: true
+        pii: false
+      - name: sku
+        source_header: "SKU"
+        type: string
+        required: true
+        pii: false
+        key_candidate: true
+      - name: price
+        source_header: "Price"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric               # cast in silver only
+      - name: availability
+        source_header: "Availability"
+        type: string
+        required: false
+        pii: false
+        encoding_unknown: true             # count or boolean? — see Q7
+      - name: number_of_products_sold
+        source_header: "Number of products sold"
+        type: string
+        required: false
+        pii: false
+        target_type: integer
+      - name: revenue_generated
+        source_header: "Revenue generated"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+        metric: true
+      - name: customer_demographics
+        source_header: "Customer demographics"
+        type: string
+        required: false
+        pii: unassessed                    # BLOCKING — see Q6
+      - name: stock_levels
+        source_header: "Stock levels"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: lead_times
+        source_header: "Lead times"
+        type: string
+        required: false
+        pii: false
+        duplicate_header_hazard: true
+        bronze_column: lead_times_1
+      - name: order_quantities
+        source_header: "Order quantities"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: shipping_times
+        source_header: "Shipping times"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: shipping_carriers
+        source_header: "Shipping carriers"
+        type: string
+        required: false
+        pii: false
+        dimension: true
+      - name: shipping_costs
+        source_header: "Shipping costs"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: supplier_name
+        source_header: "Supplier name"
+        type: string
+        required: false
+        pii: false
+        dimension: true
+      - name: location
+        source_header: "Location"
+        type: string
+        required: false
+        pii: false
+        dimension: true
+      - name: lead_time
+        source_header: "Lead time"        # second, colliding header — see Q3
+        type: string
+        required: false
+        pii: false
+        duplicate_header_hazard: true
+        bronze_column: lead_times_2
+      - name: production_volumes
+        source_header: "Production volumes"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: manufacturing_lead_time
+        source_header: "Manufacturing lead time"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: manufacturing_costs
+        source_header: "Manufacturing costs"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+      - name: inspection_results
+        source_header: "Inspection results"
+        type: string
+        required: false
+        pii: false
+        encoding_unknown: true             # pass/fail vs score? — see Q7
+      - name: defect_rates
+        source_header: "Defect rates"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+        expected_range_unknown: true       # 0-100 or 0-1? — see Q7
+      - name: transportation_modes
+        source_header: "Transportation modes"
+        type: string
+        required: false
+        pii: false
+        dimension: true
+      - name: routes
+        source_header: "Routes"
+        type: string
+        required: false
+        pii: false
+        dimension: true
+      - name: costs
+        source_header: "Costs"
+        type: string
+        required: false
+        pii: false
+        target_type: numeric
+        metric: true
+        definition_undefined: true         # does this include shipping? — see §12
+  cdc:
+    enabled: false                        # full-file snapshot replacement only
+    watermark_column: null
+    delete_behavior: none
+    late_arrival_minutes: null
+  idempotency:
+    strategy: file_content_hash
+    algorithm: sha256
+    store: etl.batch_manifest
+    duplicate_status_value: DUPLICATE
+  sla:
+    freshness_minutes: null               # not measurable — no source timestamp
+    availability_percent: null
+    note: "Freshness can only be reported as time since last successful load."
+  quality:
+    fatal_checks:
+      - file_exists
+      - csv_extension
+      - decodable                          # UNFIRABLE as listed: latin-1 in the encoding chain decodes every byte; garbage files are caught by required_headers_present instead. See docs/testing/unit-test-plan.md
+      - non_empty
+      - header_row_present
+      - required_headers_present
+      - duplicate_header_names_absent       # implemented — extract.py raises DuplicateHeaderError (ADR-005)
+      - at_least_one_row
+    row_checks_required:
+      - sku_not_null
+      - sku_unique_in_file
+      - numeric_columns_parse
+      - defect_rates_in_range
+    row_checks_implemented:
+      - sku_not_null
+      - sku_unique_in_file                  # keep-first, reject rest (ADR-005)
+      - numeric_columns_parse               # validate.py NUMERIC_COLUMNS mirrors stg_products cast types
+      - defect_rates_in_range               # built but DORMANT — requires bounds; SPEC-001 Q7 undecided (ADR-005)
+    max_reject_rate_percent: 5.0           # agreed 2026-10-15 — ADR-005; enforced in validate.py; CLI --max-reject-rate-percent; breach aborts batch, rejects quarantined, no rows loaded
+    reconciliation_required: "rows_read == rows_loaded + rows_rejected"   # asserted in load.py before commit — ADR-005
+  security:
+    classification: internal              # provisional, pending Q6
+    pii_fields: [customer_demographics]   # provisional
+    masking_in_non_prod: required_if_pii_confirmed
+    licence: kaggle_public                 # redistribution terms unverified — see Q9
+    attribution: "harshsingh2209/supply-chain-analysis"
+  notes:
+    - The repository currently contains three incompatible schemas for this source.
+    - Do not treat this contract as a gate until profiling_done is true.

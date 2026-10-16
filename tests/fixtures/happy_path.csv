@@ -1,0 +1,6 @@
+Product Type,SKU,Price,Availability,Number of products sold,Revenue generated,Customer demographics,Stock levels,Lead times,Order quantities,Shipping times,Shipping carriers,Shipping costs,Supplier name,Location,Lead time,Production volumes,Manufacturing lead time,Manufacturing costs,Inspection results,Defect rates,Transportation modes,Routes,Costs
+Electronics,ELEC-001,29.99,150,1200,35980.50,Male,80,14,200,5,FedEx,12.75,Acme Supplies,Chicago,10,500,7,1450.00,Pass,2.5,Road,Route-A,3200.00
+Clothing,CLOTH-002,49.50,200,3400,168300.00,Female,120,21,400,3,UPS,8.20,Textile Partners,Dallas,14,900,10,2600.00,Pass,1.2,Air,Route-B,5100.00
+Furniture,FURN-003,199.00,45,320,63680.00,,30,30,80,8,DHL,25.00,WoodWorks,Seattle,25,150,21,8900.00,Fail,4.8,Sea,Route-C,12000.00
+Grocery,GROC-004,3.75,980,15400,57750.00,Other,500,3,2000,1,USPS,2.10,Fresh Foods,Miami,2,4000,2,950.00,Pass,0.4,Road,Route-D,1800.00
+Electronics,ELEC-005,899.99,12,210,188997.90,Male,25,45,30,10,FedEx,40.00,Acme Supplies,Chicago,35,60,30,24000.00,Pass,0.9,Air,Route-E,28500.00

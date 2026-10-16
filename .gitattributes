@@ -1,0 +1,9 @@
+# Normalise line endings: CI runs on Linux and ruff format expects LF.
+# Without this, Windows checkouts produce CRLF and `ruff format --check` fails
+# on every file even when the formatting is correct.
+* text=auto eol=lf
+*.csv text eol=lf
+*.sql text eol=lf
+*.ya?ml text eol=lf
+*.md text eol=lf
+*.py text eol=lf

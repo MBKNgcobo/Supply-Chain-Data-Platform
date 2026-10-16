@@ -1,0 +1,16 @@
+# Committed, secret-free profile. All values resolve from the environment,
+# so no credentials live in git. Copy .env.example -> .env to set them locally.
+# Used in containers via --profiles-dir /opt/project/dbt (see compose.yaml).
+supply_chain:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('DBT_HOST', 'postgres') }}"
+      port: "{{ env_var('DBT_PORT', '5432') | as_number }}"
+      user: "{{ env_var('DBT_USER', 'postgres') }}"
+      password: "{{ env_var('DBT_PASSWORD', 'postgres') }}"
+      dbname: "{{ env_var('DBT_DATABASE', 'supply_chain') }}"
+      schema: "{{ env_var('DBT_SCHEMA', 'silver') }}"
+      threads: 4
+      connect_timeout: 10

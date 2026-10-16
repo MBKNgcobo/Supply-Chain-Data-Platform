@@ -1,0 +1,81 @@
+version: 2
+
+models:
+  - name: int_sku_inventory
+    description: >-
+      Inventory-relevant projection of stg_products at one row per sku. A pure
+      projection: no re-dedupe, no re-cast, no joins or aggregates. "Latest load
+      wins" and the TEXT-to-typed boundary live once, in stg_products (ADR-001
+      §1, ADR-002 risk R1) -- this model inherits them by referencing that model
+      rather than re-implementing them. Grain: one row per sku, per SPEC-001 Q4
+      ("SKU is unique"). Intermediate building block only: it is not a published
+      gold table, and the gold publish gate is still blocked.
+
+    config:
+      tags: ["intermediate", "silver"]
+
+    columns:
+      - name: sku
+        description: >-
+          Business key, one row per sku. Uniqueness asserted upstream in
+          stg_products (SPEC-001 Q4); restated here so this model's grain is
+          enforced where it is consumed.
+        data_type: text
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+          - not_null
+
+      - name: product_type
+        description: Product category as delivered by the source. No category mapping applied.
+        data_type: text
+
+      - name: supplier_name
+        description: Supplier as delivered. Normalised in a later model, not here.
+        data_type: text
+
+      - name: location
+        description: Source location string. Meaning unverified.
+        data_type: text
+
+      - name: stock_levels
+        description: Stock on hand. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: order_quantities
+        description: Ordered quantity. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: production_volumes
+        description: Production volume. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: number_of_products_sold
+        description: Units sold. Integer per docs/data-dictionary.md.
+        data_type: integer
+
+      - name: availability
+        description: >-
+          Availability, typed INTEGER per SPEC-001 Q7 (docs/data-dictionary.md).
+          NOTE: Q7 settled the dtype but NOT the semantics -- whether this is a
+          count of available units or a 0/1 flag is still unconfirmed. Do not
+          build a boolean predicate or a sum on it until that is decided.
+        data_type: integer
+
+      - name: source_batch_id
+        description: >-
+          Provenance. SHA-256 of the source file that produced this row. Not null by construction.
+        data_type: text
+        tests:
+          - not_null
+
+      - name: source_row_id
+        description: Bronze row identifier, carried for lineage back to the source row.
+        data_type: text
+
+      - name: loaded_at
+        description: >-
+          Loader timestamp of the load that produced this row. Carried so the
+          latest-load-wins rule can be inspected downstream, not re-applied here.
+        data_type: timestamp without time zone

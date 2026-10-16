@@ -1,0 +1,10 @@
+# Pinned dev/test dependencies (includes runtime). CI installs exactly this file,
+# so a green local run reproduces a green CI run.
+# Install with: pip install -r requirements-dev.txt
+-r requirements.txt
+pytest==9.1.1
+pytest-cov==7.1.0
+coverage==7.16.2
+ruff==0.17.1
+dbt-core==1.12.6
+dbt-postgres==1.11.0

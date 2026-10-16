@@ -1,0 +1,6 @@
+# Pinned runtime dependencies for the Supply Chain Data Platform.
+# Install in CI with: pip install -r requirements.txt
+# Regenerate pins from a clean env with: pip freeze (then trim to these packages).
+pydantic==2.14.1
+psycopg2-binary==2.9.13
+PyYAML==6.0.3

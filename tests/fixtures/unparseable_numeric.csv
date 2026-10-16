@@ -1,0 +1,4 @@
+Product Type,SKU,Price,Availability,Number of products sold,Revenue generated,Customer demographics,Stock levels,Lead times,Order quantities,Shipping times,Shipping carriers,Shipping costs,Supplier name,Location,Lead time,Production volumes,Manufacturing lead time,Manufacturing costs,Inspection results,Defect rates,Transportation modes,Routes,Costs
+Electronics,SKU-N1,29.99,150,1200,35980.50,Male,80,14,200,5,FedEx,12.75,Acme Supplies,Chicago,10,500,7,1450.00,Pass,2.5,Road,Route-A,3200.00
+Clothing,SKU-N2,twelve,200,3400,168300.00,Female,120,21,400,3,UPS,8.20,Textile Partners,Dallas,14,900,10,2600.00,Pass,1.2,Air,Route-B,5100.00
+Furniture,SKU-N3,199.00,45,320,63680.00,,30,30,80,8,DHL,25.00,WoodWorks,Seattle,25,150,21,8900.00,Fail,4.8,Sea,Route-C,12000.00

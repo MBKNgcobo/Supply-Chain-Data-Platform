@@ -1,0 +1,63 @@
+version: 2
+
+models:
+  - name: dim_product
+    description: >-
+      Product dimension for gold: the six text labels of supply_chain_data.csv
+      at one row per sku, with source_batch_id for provenance. Built from the
+      same silver rows as fct_sku_performance, not joined into it — agreement
+      between the two is enforced by the fact's relationships test. A pure
+      projection: no re-cast, no re-dedupe, no measures, no category mapping,
+      and no customer_demographics (SPEC-001 Q6 answered: gender data, excluded
+      from every published model per ADR-001 §6). No dataset contract yet: it
+      gets one when a consumer other than the fact's relationships test appears
+      (ADR-003).
+
+    config:
+      tags: ["marts", "gold"]
+
+    columns:
+      - name: sku
+        description: >-
+          Business key, one row per sku. Grain inherited from stg_products
+          (SPEC-001 Q4); restated here so this model's grain is enforced where
+          it is consumed.
+        data_type: text
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+          - not_null
+
+      - name: product_type
+        description: Product category as delivered by the source. No category mapping applied.
+        data_type: text
+
+      - name: supplier_name
+        description: Supplier as delivered. Normalised downstream if a consumer ever needs it.
+        data_type: text
+
+      - name: location
+        description: Source location string. Meaning unverified.
+        data_type: text
+
+      - name: shipping_carriers
+        description: Carrier name as delivered.
+        data_type: text
+
+      - name: transportation_modes
+        description: Transport mode as delivered.
+        data_type: text
+
+      - name: routes
+        description: Route identifier as delivered.
+        data_type: text
+
+      - name: source_batch_id
+        description: >-
+          Provenance. SHA-256 of the source file that produced this row, so any
+          dimension row traces to a delivery exactly as a fact row does. Not
+          null by construction.
+        data_type: text
+        tests:
+          - not_null

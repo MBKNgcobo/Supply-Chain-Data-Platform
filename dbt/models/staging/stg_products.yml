@@ -1,0 +1,131 @@
+version: 2
+
+models:
+  - name: stg_products
+    description: >
+      Product-dimension columns of supply_chain_data.csv at one row per sku.
+      Type 1 overwrite on the latest successful load, per SPEC-001 Q5. Casts and
+      trims only: no joins, no aggregates, no derived measures. Read this model
+      rather than reading bronze directly, because it is where the TEXT-to-typed
+      boundary and the latest-load-wins rule live.
+
+    config:
+      tags: ["staging", "silver"]
+
+    columns:
+      - name: sku
+        description: Business key. Assumed unique per SPEC-001 Q4.
+        data_type: text
+        constraints:
+          - type: not_null
+        tests:
+          - unique
+          - not_null
+
+      - name: product_type
+        description: Product category as delivered by the source. No category mapping applied.
+        data_type: text
+
+      - name: supplier_name
+        description: Supplier as delivered. Normalised in intermediate, not here.
+
+      - name: location
+        description: Source location string. Meaning unverified.
+
+      - name: shipping_carriers
+        description: Carrier name. Dimension column.
+
+      - name: transportation_modes
+        description: Transport mode. Dimension column.
+
+      - name: routes
+        description: Route identifier. Dimension column.
+
+      - name: availability
+        description: >
+          Availability. Cast to INTEGER per SPEC-001 Q7, now answered
+          (docs/data-dictionary.md types it INTEGER). The dtype is settled but
+          the semantics are not: whether this is a count of available units or a
+          0/1 flag is still unconfirmed, so no boolean or aggregate meaning is
+          asserted on it anywhere.
+
+      - name: inspection_results
+        description: >
+          Q7 typed this VARCHAR(20), so no cast is needed -- it stays text. Its
+          pass/fail-versus-numeric-score meaning is still unconfirmed.
+
+      - name: customer_demographics
+        description: >
+          PROVISIONAL PII -- SPEC-001 Q6 confirmed this holds gender data
+          (Unknown, Male, Non-binary, Female). Retained so staging stays a faithful
+          typed projection, but it must NOT be joined into any published gold model.
+          classification: internal, masked in non-production if confirmed.
+
+      - name: price
+        description: Unit price. NUMERIC(12,2) per docs/data-dictionary.md.
+        data_type: numeric
+        tests:
+          - not_null:
+              # A null price on some rows is expected in the source. This test is
+              # recorded so the current null rate is visible, not to fail the build.
+              config:
+                severity: warn
+
+      - name: number_of_products_sold
+        description: Units sold. Integer per docs/data-dictionary.md.
+
+      - name: revenue_generated
+        description: >
+          Revenue. Gross versus net is UNDEFINED (SPEC-001 section 12) -- do not
+          label this in a report until that is decided.
+
+      - name: stock_levels
+        description: Stock on hand.
+
+      - name: order_quantities
+        description: Ordered quantity.
+
+      - name: shipping_times
+        description: Shipping duration. Unit (days/hours) unverified.
+
+      - name: shipping_costs
+        description: Shipping cost.
+
+      - name: production_volumes
+        description: Production volume.
+
+      - name: manufacturing_lead_time
+        description: Manufacturing lead time.
+
+      - name: manufacturing_costs
+        description: Manufacturing cost.
+
+      - name: lead_times_1
+        description: >
+          From the first colliding source header, 'Lead times'. NOT the same measure
+          as lead_times_2 until SPEC-001 Q3 is resolved. Do not sum or coalesce.
+
+      - name: lead_times_2
+        description: >
+          From the second colliding source header, 'Lead time'. See lead_times_1.
+
+      - name: defect_rates
+        description: >
+          Defect rate. Range UNVERIFIED -- 0-100 or 0-1 (SPEC-001 Q7). A range test
+          would encode the guess, so none is asserted yet.
+        tests:
+          - not_null:
+              config:
+                severity: warn
+
+      - name: costs
+        description: >
+          Cost. Whether this includes shipping is UNDEFINED (SPEC-001 section 12).
+          Passed through unmodified so the definition is decided once.
+
+      - name: source_batch_id
+        description: >
+          Provenance. Which load produced this row. Kept even though history is type 1,
+          so any prior state is recoverable from bronze. Not null by construction.
+        tests:
+          - not_null

@@ -1,0 +1,37 @@
+version: 2
+
+# Bronze sources. These are written by src/supply_chain_pipeline, not by dbt, so
+# they are declared as sources rather than models.
+#
+# freshness is intentionally NOT set here. The source file has no timestamp
+# column, so dbt cannot compute data age; it could only measure the loaded_at
+# column, which reports the loader's clock rather than the data's. Reporting
+# freshness as "time since last SUCCESS row in etl.batch_manifest" is the honest
+# version and belongs in the Airflow check, not in a dbt freshness assertion.
+# See SPEC-001 Q8 and the sla block of docs/contracts/sources/.
+
+sources:
+  - name: bronze
+    description: >
+      Raw, append-only landing zone written by the Python loader. All columns are
+      TEXT by design; typing happens in the silver staging models.
+    schema: bronze
+    tables:
+      - name: supply_chain_raw
+        description: >
+          One row per line of supply_chain_data.csv, plus loader provenance.
+          Declared in sql/bootstrap/003_create_bronze_supply_chain_raw.sql.
+        columns:
+          - name: sku
+            description: Business key. Uniqueness asserted in stg_products, not here.
+            tests:
+              - not_null
+          - name: source_batch_id
+            description: SHA-256 of the source file that produced this row.
+            tests:
+              - not_null
+          - name: source_identity
+            description: Batch hash + '-' + row number. Unique per source row.
+            tests:
+              - unique
+              - not_null

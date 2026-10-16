@@ -1,0 +1,10 @@
+Metadata-Version: 2.4
+Name: supply-chain-data-platform
+Version: 0.1.0
+Summary: CSV-to-Bronze ingestion pipeline for the Supply Chain Data Platform.
+Requires-Python: >=3.10
+Requires-Dist: pydantic>=2
+Requires-Dist: psycopg2-binary
+Provides-Extra: dev
+Requires-Dist: pytest>=8; extra == "dev"
+Requires-Dist: pytest-cov>=5; extra == "dev"

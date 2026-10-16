@@ -1,0 +1,2 @@
+Product Type,SKU,Price,Availability,Number of products sold,Revenue generated,Price,Stock levels,Lead times,Order quantities,Shipping times,Shipping carriers,Shipping costs,Supplier name,Location,Lead time,Production volumes,Manufacturing lead time,Manufacturing costs,Inspection results,Defect rates,Transportation modes,Routes,Costs
+Electronics,ELEC-001,29.99,150,1200,35980.50,Male,80,14,200,5,FedEx,12.75,Acme Supplies,Chicago,10,500,7,1450.00,Pass,2.5,Road,Route-A,3200.00

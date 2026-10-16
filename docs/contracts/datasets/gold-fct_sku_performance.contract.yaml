@@ -1,0 +1,169 @@
+# Dataset contract for the gold SKU performance fact table.
+# Status: DRAFT / PROPOSED — the table is now implemented but NOT published.
+# The publish_gate below is still closed and no consumer may build on it until
+# it opens. Owner remains unassigned (SPEC-001 Q1, blocking).
+#
+# CORRECTED 2026-10-14 (see docs/decisions/ADR-003-*.md): this file had drifted
+# from settled decisions, and was fixed BEFORE the model was written so that
+# contract and model could not disagree on day one:
+#   - Q6 is answered (holds gender data): customer_demographics removed from
+#     the schema entirely. Absence, not a flag, is the exclusion (ADR-001 §6).
+#   - Q7 is answered: availability is integer, not text; encoding_pending is
+#     dropped. The dtype is settled; the semantics (count vs flag) are not.
+#   - Stock/count measures retyped numeric -> integer to match
+#     docs/data-dictionary.md: stock_levels, order_quantities,
+#     production_volumes, number_of_products_sold, lead_times_1,
+#     lead_times_2, manufacturing_lead_time, shipping_times.
+#   - Q4, Q5 and Q8 are answered; the ASSUMPTION comments they carried are
+#     replaced with references to the answers.
+
+dataset_contract:
+  name: gold.fct_sku_performance
+  spec_ref: SPEC-001
+  owner: UNASSIGNED                       # BLOCKING — see Q1
+  domain: supply_chain
+  layer: gold
+  description: >-
+    Current-state performance measures per SKU, derived from the most recent
+    successful load of supply_chain_data.csv. This is a snapshot of a static
+    source file, not a live feed.
+  grain: one row per sku                  # SPEC-001 Q4 answered: SKU unique, one row per sku
+  grain_confirmed: true
+  history_type: type_1                    # SPEC-001 Q5 answered: type 1 keyed on sku; type 2 impossible without a source date
+  keys:
+    primary_key: [sku]
+    business_key: [sku]
+    partition_key: null                   # no temporal column to partition on
+  schema:
+    version: v0-proposed
+    columns:
+      - name: sku
+        type: text
+        nullable: false
+      - name: product_type
+        type: text
+        nullable: true
+      - name: supplier_name
+        type: text
+        nullable: true
+      - name: shipping_carriers
+        type: text
+        nullable: true
+      - name: transportation_modes
+        type: text
+        nullable: true
+      - name: location
+        type: text
+        nullable: true
+      - name: routes
+        type: text
+        nullable: true
+      - name: price
+        type: numeric
+        nullable: true
+      - name: revenue_generated
+        type: numeric
+        nullable: true
+      - name: costs
+        type: numeric
+        nullable: true
+        definition_pending: true
+      - name: shipping_costs
+        type: numeric
+        nullable: true
+      - name: manufacturing_costs
+        type: numeric
+        nullable: true
+      - name: number_of_products_sold
+        type: integer
+        nullable: true
+      - name: order_quantities
+        type: integer
+        nullable: true
+      - name: stock_levels
+        type: integer
+        nullable: true
+      - name: production_volumes
+        type: integer
+        nullable: true
+      - name: defect_rates
+        type: numeric
+        nullable: true
+        range_unverified: true
+      - name: lead_times_1
+        type: integer
+        nullable: true
+        note: from the first 'Lead times' header — see Q3
+      - name: lead_times_2
+        type: integer
+        nullable: true
+        note: from the second 'Lead time' header — see Q3
+      - name: manufacturing_lead_time
+        type: integer
+        nullable: true
+      - name: shipping_times
+        type: integer
+        nullable: true
+      - name: availability
+        type: integer
+        nullable: true
+        note: >-
+          Dtype settled (SPEC-001 Q7, docs/data-dictionary.md). Semantics NOT
+          settled: count of available units versus 0/1 flag is unconfirmed, so
+          no boolean predicate or aggregate may be built on it anywhere until
+          that is decided.
+      - name: inspection_results
+        type: text
+        nullable: true
+        encoding_pending: true
+      # customer_demographics is deliberately ABSENT from this schema. Q6 is
+      # answered (holds gender data: Unknown, Male, Non-binary, Female) and
+      # ADR-001 §6 excludes it from every published model. The absence is the
+      # exclusion — it is not selectable from this table, and no flag here can
+      # be misread as "present but hidden". It remains in silver for internal
+      # review only.
+      - name: source_batch_id
+        type: text
+        nullable: false
+        note: provenance — which load produced this row
+  freshness:
+    field: null                           # no business timestamp exists
+    cadence: daily                        # SPEC-001 Q8 answered: daily 06:00 UTC
+    max_age_hours: 24
+    available_by_utc: "06:00"
+    measurement: "time since last SUCCESS row in etl.batch_manifest"
+  quality:
+    checks:
+      - unique: [sku]
+      - not_null: [sku, source_batch_id]
+      - accepted_range: defect_rates
+      - non_negative: order_quantities           # dbt/tests/assert_order_quantities_non_negative.sql — severity error; nulls pass; rule in docs/data-dictionary.md
+      - relationships:
+          - column: sku
+            to: ref('dim_product')
+            field: sku
+    reconciliation:
+      - "count(gold.fct_sku_performance) == count(distinct sku in silver for source_batch_id)"
+  access:
+    classification: internal              # settled: Q6 answered — the PII column is excluded from this dataset entirely, so nothing here needs masking
+    allowed_consumers:
+      - powerbi-operational-reporting
+      - procurement-analysts
+    denied_consumers:
+      - external
+    # masking: none required for this dataset — customer_demographics is not a
+    # column here (see its entry in the schema section). The masking rule that
+    # applies to that column lives in silver, where it still exists.
+  compatibility:
+    change_policy: additive_by_default
+    breaking_change_examples:
+      - grain change
+      - sku no longer unique
+      - redefinition of revenue_generated or costs
+    deprecation_notice_days: 30
+    version_bump_required: true
+  publish_gate:
+    requires_spec_approved: true
+    requires_profiling_complete: true
+    requires_reconciliation_passing: true
+    current_gate_state: blocked
