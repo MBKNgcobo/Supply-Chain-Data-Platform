@@ -107,7 +107,7 @@ jobs:
 
       - name: Ingest fixture CSV through the real CLI
         run: |
-          python -m supply_chain_pipeline.cli \
+          PYTHONPATH=src python -m supply_chain_pipeline.cli \
             --file tests/fixtures/happy_path.csv \
             --pipeline-name ci_smoke_ingestion
           echo "CLI exit code: $?"
